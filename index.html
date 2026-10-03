@@ -306,6 +306,11 @@
   <script>
     const characters = [
       { 
+        id: "PJK", name: "Kakak pejeka", image: "", profileImage: "", desc: "New character description", birthdate: "", hometown: "", rejectText: "Code PJK: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      },
+      { 
         id: "NIM", name: "Name1", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
         socials: { instagram: "", github: "", discord: "" },
         quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
@@ -477,7 +482,12 @@
     function renderDocuments() {
       const container = document.getElementById('docs-container');
       container.innerHTML = '';
-      characters.forEach((char, index) => {
+      
+      // Filter out name0
+      const filteredCharacters = characters.filter(char => char.name.toLowerCase() !== "name0");
+
+      filteredCharacters.forEach((char) => {
+        const originalIndex = characters.findIndex(c => c.id === char.id && c.name === char.name);
         const item = document.createElement('div');
         item.className = 'bg-purple-950/30 border border-fuchsia-500/40 p-3 flex items-center justify-between gap-2 hover:border-gold hover:shadow-[0_0_15px_rgba(250,204,21,0.25)] transition-all duration-200';
         
@@ -488,7 +498,7 @@
               <span class="font-hud text-[9px] text-fuchsia-400">ID:</span>
               <span class="font-hud text-xs text-fuchsia-300 font-bold bg-black/60 border border-fuchsia-500/50 px-2 py-1">${char.id}</span>
             </div>
-            <button onclick="openDocumentModal(${index})" class="font-hud text-[9px] text-gold bg-purple-950/80 border border-gold/50 px-3 py-1 hover:bg-gold hover:text-black transition-all ml-1">[OPEN]</button>
+            <button onclick="openDocumentModal(${originalIndex})" class="font-hud text-[9px] text-gold bg-purple-950/80 border border-gold/50 px-3 py-1 hover:bg-gold hover:text-black transition-all ml-1">[OPEN]</button>
           </div>
         `;
         container.appendChild(item);
