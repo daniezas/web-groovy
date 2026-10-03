@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Character Select & Profile - Groovy HUD</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background-color: #000000;
+      color: #e2e8f0;
+      overflow: hidden;
+      user-select: none;
+    }
+    .font-hud {
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .scanlines {
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.35) 50%
+      ), linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.02),
+        rgba(0, 255, 0, 0.01),
+        rgba(0, 0, 255, 0.02)
+      );
+      background-size: 100% 4px, 6px 100%;
+    }
+
+    @keyframes gridScroll {
+      0% { background-position: 0 0; }
+      100% { background-position: 0 40px; }
+    }
+    .groovy-grid {
+      background-image: 
+        linear-gradient(to right, rgba(217, 70, 239, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(217, 70, 239, 0.05) 1px, transparent 1px);
+      background-size: 30px 30px;
+      animation: gridScroll 15s linear infinite;
+    }
+
+    @keyframes holoScan {
+      0% { transform: translateY(-100%); opacity: 0; }
+      50% { opacity: 0.6; }
+      100% { transform: translateY(100%); opacity: 0; }
+    }
+    .holo-scanner::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 100%;
+      background: linear-gradient(to bottom, transparent, rgba(250, 204, 21, 0.15) 50%, transparent);
+      animation: holoScan 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes glitch {
+      0% { transform: translate(0) }
+      20% { transform: translate(-2px, 2px) }
+      40% { transform: translate(-2px, -2px) }
+      60% { transform: translate(2px, 2px) }
+      80% { transform: translate(2px, -2px) }
+      100% { transform: translate(0) }
+    }
+    .glitch-hover:hover {
+      animation: glitch 0.2s cubic-bezier(.25, .46, .45, .94) both infinite;
+    }
+
+    @keyframes hudPulse {
+      0%, 100% { border-color: #d946ef; box-shadow: 0 0 15px rgba(217, 70, 239, 0.3), inset 0 0 10px rgba(217, 70, 239, 0.15); }
+      50% { border-color: #facc15; box-shadow: 0 0 25px rgba(250, 204, 21, 0.6), inset 0 0 18px rgba(250, 204, 21, 0.3); }
+    }
+
+    .hud-frame {
+      position: relative;
+      background: rgba(10, 5, 20, 0.95);
+      border: 2px solid #d946ef;
+      animation: hudPulse 4s infinite ease-in-out;
+      clip-path: polygon(
+        0% 12px, 12px 0%, 
+        calc(100% - 20px) 0%, 100% 20px, 
+        100% calc(100% - 10px), calc(100% - 10px) 100%, 
+        15px 100%, 0% calc(100% - 15px)
+      );
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .hud-frame::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, rgba(217, 70, 239, 0.12) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hud-corner-tl {
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 8px; height: 8px;
+      border-top: 2px solid #facc15;
+      border-left: 2px solid #facc15;
+      z-index: 10;
+    }
+    .hud-corner-br {
+      position: absolute;
+      bottom: 2px; right: 2px;
+      width: 8px; height: 8px;
+      border-bottom: 2px solid #facc15;
+      border-right: 2px solid #facc15;
+      z-index: 10;
+    }
+
+    .text-gold {
+      color: #facc15;
+    }
+    .text-gold-shadow {
+      text-shadow: 0 0 10px rgba(250, 204, 21, 0.8), 0 0 20px rgba(250, 204, 21, 0.4);
+    }
+
+    @keyframes shinePulse {
+      0% {
+        box-shadow: 0 0 15px rgba(250, 204, 21, 0.4), inset 0 0 10px rgba(250, 204, 21, 0.3);
+        border-color: #facc15;
+      }
+      50% {
+        box-shadow: 0 0 35px rgba(250, 204, 21, 0.95), inset 0 0 25px rgba(250, 204, 21, 0.6);
+        border-color: #fef08a;
+      }
+      100% {
+        box-shadow: 0 0 15px rgba(250, 204, 21, 0.4), inset 0 0 10px rgba(250, 204, 21, 0.3);
+        border-color: #facc15;
+      }
+    }
+
+    .menu-active-glow {
+      background: rgba(250, 204, 21, 0.18) !important;
+      animation: shinePulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes groovyPop {
+      0% { transform: scale(0.85) skewX(5deg); opacity: 0; filter: blur(10px); }
+      70% { transform: scale(1.02) skewX(-2deg); opacity: 1; filter: blur(0px); }
+      100% { transform: scale(1) skewX(0deg); opacity: 1; filter: blur(0px); }
+    }
+    .groovy-modal-anim {
+      animation: groovyPop 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(10, 5, 20, 0.8);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #d946ef;
+      border-radius: 3px;
+      box-shadow: 0 0 10px #d946ef;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #facc15;
+      box-shadow: 0 0 10px #facc15;
+    }
+
+    .a4-container {
+      aspect-ratio: 1 / 1.414;
+      width: 100%;
+      max-width: 380px;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between items-center relative scanlines groovy-grid select-none p-6 overflow-y-auto">
+
+  <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-purple-950/30 blur-[150px] rounded-full pointer-events-none animate-pulse"></div>
+
+  <header class="w-full pt-4 z-20 flex flex-col items-center">
+    <h1 class="font-hud font-black text-2xl md:text-3xl text-gold tracking-widest text-gold-shadow uppercase text-center mb-3 glitch-hover cursor-default">
+      Groovy Cukucukucu
+    </h1>
+
+    <nav class="flex flex-row items-center justify-center gap-3 w-full max-w-4xl overflow-x-auto px-2 py-1">
+      
+      <button onclick="switchTab('selection')" id="menu-selection" class="hud-frame px-4 py-2 text-center transition-all cursor-pointer menu-active-glow flex-1 min-w-[120px]">
+        <div class="hud-corner-tl"></div>
+        <div class="hud-corner-br"></div>
+        <span class="font-hud text-xs md:text-sm font-bold uppercase tracking-wider block text-gold text-gold-shadow">Characters</span>
+      </button>
+
+      <button onclick="switchTab('documents')" id="menu-documents" class="hud-frame px-4 py-2 text-center transition-all cursor-pointer bg-black/80 text-fuchsia-300 hover:text-gold flex-1 min-w-[120px]">
+        <div class="hud-corner-tl"></div>
+        <div class="hud-corner-br"></div>
+        <span class="font-hud text-xs md:text-sm font-bold uppercase tracking-wider block text-fuchsia-300">Documents</span>
+      </button>
+
+      <button onclick="switchTab('gallery')" id="menu-gallery" class="hud-frame px-4 py-2 text-center transition-all cursor-pointer bg-black/80 text-fuchsia-300 hover:text-gold flex-1 min-w-[120px]">
+        <div class="hud-corner-tl"></div>
+        <div class="hud-corner-br"></div>
+        <span class="font-hud text-xs md:text-sm font-bold uppercase tracking-wider block text-fuchsia-300">Gallery</span>
+      </button>
+
+      <button onclick="switchTab('interactive')" id="menu-interactive" class="hud-frame px-4 py-2 text-center transition-all cursor-pointer bg-black/80 text-fuchsia-300 hover:text-gold flex-1 min-w-[120px]">
+        <div class="hud-corner-tl"></div>
+        <div class="hud-corner-br"></div>
+        <span class="font-hud text-xs md:text-sm font-bold uppercase tracking-wider block text-fuchsia-300">Quiz</span>
+      </button>
+
+    </nav>
+    <div class="w-72 h-0.5 bg-gradient-to-r from-transparent via-fuchsia-500 to-transparent mx-auto mt-3 shadow-[0_0_10px_#d946ef]"></div>
+  </header>
+
+  <div class="w-full max-w-5xl flex-1 flex flex-col items-center justify-center relative my-auto z-20">
+
+    <div id="view-selection" class="w-full flex flex-col items-center justify-center h-[380px] relative">
+      <div class="w-full flex items-center justify-center relative h-full">
+        <button onclick="rotateCarousel(-1)" class="absolute left-2 md:left-4 z-40 text-gold hover:text-white transition-transform active:scale-90 p-4 focus:outline-none hover:scale-125 duration-200">
+          <span class="font-hud text-3xl md:text-4xl text-gold text-gold-shadow block animate-pulse">&#9664;</span>
+        </button>
+
+        <div id="carousel-track" class="flex items-center justify-center gap-6 md:gap-10 w-full h-full px-12">
+        </div>
+
+        <button onclick="rotateCarousel(1)" class="absolute right-2 md:right-4 z-40 text-gold hover:text-white transition-transform active:scale-90 p-4 focus:outline-none hover:scale-125 duration-200">
+          <span class="font-hud text-3xl md:text-4xl text-gold text-gold-shadow block animate-pulse">&#9654;</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="view-documents" class="w-full hidden flex flex-col items-center justify-center py-4">
+      <div class="hud-frame w-full max-w-4xl p-6 bg-black/95 border-2 border-fuchsia-500">
+        <div class="hud-corner-tl"></div>
+        <div class="hud-corner-br"></div>
+        <h2 class="font-hud font-bold text-xl text-gold text-gold-shadow uppercase tracking-widest mb-4">CV AREA</h2>
+        <div id="docs-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar">
+        </div>
+      </div>
+    </div>
+
+    <div id="view-gallery" class="w-full hidden flex flex-col items-center justify-center py-4">
+      <div class="hud-frame w-full max-w-4xl p-6 bg-black/95 border-2 border-fuchsia-500">
+        <div class="hud-corner-tl"></div>
+        <div class="hud-corner-br"></div>
+        
+        <div class="mb-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <h2 class="font-hud font-bold text-lg md:text-xl text-gold text-gold-shadow uppercase tracking-widest">GROOVY GALLERY</h2>
+        </div>
+
+        <div id="gallery-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar">
+        </div>
+      </div>
+    </div>
+
+    <div id="view-interactive" class="w-full hidden flex flex-col items-center justify-center py-4">
+      <div class="hud-frame w-full max-w-2xl p-6 bg-black/95 border-2 border-fuchsia-500 text-center">
+        <div class="hud-corner-tl"></div>
+        <div class="hud-corner-br"></div>
+        
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="font-hud font-bold text-lg md:text-xl text-gold text-gold-shadow uppercase tracking-widest">WHO QUOTED THIS?</h2>
+          <span id="quiz-counter" class="font-hud text-xs text-fuchsia-300 bg-purple-950/60 border border-fuchsia-500/50 px-3 py-1">Question 1 / 10</span>
+        </div>
+
+        <div id="quiz-container" class="flex flex-col items-center w-full">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer id="selection-footer" class="w-full pb-4 z-20 flex flex-col items-center gap-2">
+    <div class="text-center">
+      <h2 class="font-hud font-bold text-base md:text-lg text-gold tracking-wider text-gold-shadow uppercase animate-pulse">Pick Character</h2>
+    </div>
+    
+    <div class="flex items-center gap-8 font-hud text-sm font-bold">
+      <button onclick="handleChoice('yes')" class="text-gold bg-purple-950/60 border border-gold/60 px-8 py-2 hover:bg-gold hover:text-black transition-all shadow-[0_0_15px_rgba(250,204,21,0.4)] hover:shadow-[0_0_25px_rgba(250,204,21,0.8)] active:scale-95 uppercase tracking-wider transform hover:-translate-y-0.5">
+        YES
+      </button>
+      <button onclick="handleChoice('no')" class="text-fuchsia-400 bg-purple-950/40 border border-fuchsia-500/60 px-8 py-2 hover:bg-fuchsia-600 hover:text-white transition-all shadow-[0_0_15px_rgba(217,70,239,0.4)] hover:shadow-[0_0_25px_rgba(217,70,239,0.8)] active:scale-95 flex items-center gap-2 uppercase tracking-wider transform hover:-translate-y-0.5">
+        <span>&#9658;</span> NO
+      </button>
+    </div>
+  </footer>
+
+  <div id="vn-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div id="modal-content-box" class="hud-frame max-w-2xl w-full p-6 bg-black/95 border-2 border-fuchsia-500 relative groovy-modal-anim shadow-[0_0_50px_rgba(217,70,239,0.6)] max-h-[92vh] flex flex-col">
+      <div class="hud-corner-tl"></div>
+      <div class="hud-corner-br"></div>
+      
+      <div class="flex items-center justify-between mb-3 shrink-0">
+        <div id="modal-tag" class="inline-block bg-fuchsia-950 border border-fuchsia-500 text-fuchsia-300 font-hud text-xs px-3 py-1 uppercase tracking-widest shadow-[0_0_10px_#d946ef]">
+          System Dialogue
+        </div>
+        <button onclick="closeModal()" class="text-fuchsia-400 hover:text-gold font-hud font-bold text-lg px-2 transition-colors focus:outline-none hover:scale-125 duration-200" title="Close">
+          &times;
+        </button>
+      </div>
+
+      <div id="modal-body" class="overflow-y-auto custom-scrollbar pr-2 flex-1 flex flex-col items-center justify-center">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const characters = [
+      { 
+        id: "NIM", name: "Name1", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      },
+      { 
+        id: "NIM", name: "Name2", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      },
+      { 
+        id: "NIM", name: "Name3", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      },
+      { 
+        id: "NIM", name: "Name4", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      },
+      { 
+        id: "NIM", name: "Name5", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      },
+      { 
+        id: "NIM", name: "Name6", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      },
+      { 
+        id: "NIM", name: "Name7", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      },
+      { 
+        id: "NIM", name: "Name8", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      },
+      { 
+        id: "196", name: "Dai", image: "", profileImage: "https://i.pinimg.com/736x/d2/0e/46/d20e4673212f4646b59f5d113f0a986c.jpg", CV: "https://media.licdn.com/dms/image/v2/D5622AQFDbKTSFdJkMA/feedshare-image-high-res/B56aCRDKRFIIAU-/0/1789139920226?e=1792627200&v=beta&t=u8Y1Dv7hUufeeV0fVpo-eFrpGPfav_hMqeimi8i5pNM", desc: "Hello!! This is Dai's profile", birthdate: "04-09-2007", hometown: "Jakarta Timur", rejectText: "Code 196: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Ailov tikus", "Ungu adalah hidup", "Taylor Swift harga mati", "Yang abadi hanya pdd", "Una"]
+      },
+      { 
+        id: "NIM", name: "Name10", image: "", profileImage: "", CV: "", desc: "desc", birthdate: "", hometown: "", rejectText: "Code [NIM]: Access denied. Authorization protocol refused.", 
+        socials: { instagram: "", github: "", discord: "" },
+        quotes: ["Quote 1", "Quote 2", "Quote 3", "Quote 4", "Quote 5"]
+      }
+    ];
+
+    let galleryImages = [
+      "https://cdn.discordapp.com/attachments/1114204702935101580/1555991161670336513/cukucukucu.jpg?backend=b2&ex=6ac28931&is=6ac137b1&hm=3bb9015a3867c06c1399cef27f7ac0ec7417ef232769058a096df1a65ae573f6",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "" 
+    ];
+
+    let currentIndex = 0;
+    let quizQuestions = [];
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+    let isAnswered = false;
+
+    function switchTab(tabName) {
+      const tabs = ['selection', 'documents', 'gallery', 'interactive'];
+      tabs.forEach(t => {
+        const viewEl = document.getElementById(`view-${t}`);
+        const menuEl = document.getElementById(`menu-${t}`);
+        const textSpan = menuEl.querySelector('span');
+
+        if (t === tabName) {
+          viewEl.classList.remove('hidden');
+          menuEl.className = "hud-frame px-4 py-2 text-center transition-all cursor-pointer menu-active-glow flex-1 min-w-[120px]";
+          textSpan.className = "font-hud text-xs md:text-sm font-bold uppercase tracking-wider block text-gold text-gold-shadow";
+        } else {
+          viewEl.classList.add('hidden');
+          menuEl.className = "hud-frame px-4 py-2 text-center transition-all cursor-pointer bg-black/80 text-fuchsia-300 hover:text-gold flex-1 min-w-[120px]";
+          textSpan.className = "font-hud text-xs md:text-sm font-bold uppercase tracking-wider block text-fuchsia-300";
+        }
+      });
+
+      const footerEl = document.getElementById('selection-footer');
+      if (tabName === 'selection') {
+        footerEl.classList.remove('hidden');
+      } else {
+        footerEl.classList.add('hidden');
+        if (tabName === 'interactive') {
+          initQuiz();
+        }
+      }
+    }
+
+    function renderCarousel() {
+      const track = document.getElementById('carousel-track');
+      track.innerHTML = '';
+
+      const total = characters.length;
+      const leftIdx = (currentIndex - 1 + total) % total;
+      const centerIdx = currentIndex;
+      const rightIdx = (currentIndex + 1) % total;
+
+      const visibleIndices = [
+        { index: leftIdx, position: 'left' },
+        { index: centerIdx, position: 'center' },
+        { index: rightIdx, position: 'right' }
+      ];
+
+      visibleIndices.forEach((item) => {
+        const char = characters[item.index];
+        const isCenter = item.position === 'center';
+
+        const cardContainer = document.createElement('div');
+        cardContainer.className = `flex flex-col items-center transition-all duration-300 ${
+          isCenter ? 'scale-100 z-30 opacity-100' : 'scale-75 z-10 opacity-40 hover:opacity-75 cursor-pointer hover:scale-90'
+        }`;
+        
+        if (!isCenter) {
+          cardContainer.onclick = () => {
+            currentIndex = item.index;
+            renderCarousel();
+          };
+        }
+
+        const cardBox = document.createElement('div');
+        cardBox.className = `hud-frame w-[140px] h-[190px] md:w-[160px] md:h-[210px] flex flex-col items-center justify-center p-3 relative`;
+
+        const tl = document.createElement('div');
+        tl.className = 'hud-corner-tl';
+        const br = document.createElement('div');
+        br.className = 'hud-corner-br';
+        cardBox.appendChild(tl);
+        cardBox.appendChild(br);
+
+        const innerContent = document.createElement('div');
+        innerContent.className = 'w-full h-full bg-black/70 border border-fuchsia-500/40 flex flex-col items-center justify-center relative overflow-hidden';
+        
+        if (char.image && char.image.trim() !== "") {
+          const img = document.createElement('img');
+          img.src = char.image;
+          img.className = 'w-full h-full object-cover';
+          innerContent.appendChild(img);
+        } else {
+          innerContent.innerHTML = `
+            <div class="flex flex-col items-center justify-center text-fuchsia-400/60 p-2 text-center">
+              <svg class="w-10 h-10 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+              <span class="font-hud font-bold text-[8px] uppercase tracking-wider">No Image</span>
+            </div>
+          `;
+        }
+        cardBox.appendChild(innerContent);
+
+        const nameDisplay = document.createElement('div');
+        nameDisplay.className = `mt-2 bg-black/60 border ${isCenter ? 'border-gold text-gold text-gold-shadow' : 'border-fuchsia-500/50 text-fuchsia-300'} font-hud font-bold text-xs md:text-sm tracking-widest uppercase text-center w-36 py-1 px-1`;
+        nameDisplay.innerText = char.name;
+
+        cardContainer.appendChild(cardBox);
+        cardContainer.appendChild(nameDisplay);
+        track.appendChild(cardContainer);
+      });
+    }
+
+    function renderDocuments() {
+      const container = document.getElementById('docs-container');
+      container.innerHTML = '';
+      characters.forEach((char, index) => {
+        const item = document.createElement('div');
+        item.className = 'bg-purple-950/30 border border-fuchsia-500/40 p-3 flex items-center justify-between gap-2 hover:border-gold hover:shadow-[0_0_15px_rgba(250,204,21,0.25)] transition-all duration-200';
+        
+        item.innerHTML = `
+          <span class="font-hud font-bold text-xs text-gold uppercase tracking-wider bg-black/60 border border-fuchsia-500/50 px-2.5 py-1">${char.name}</span>
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5">
+              <span class="font-hud text-[9px] text-fuchsia-400">ID:</span>
+              <span class="font-hud text-xs text-fuchsia-300 font-bold bg-black/60 border border-fuchsia-500/50 px-2 py-1">${char.id}</span>
+            </div>
+            <button onclick="openDocumentModal(${index})" class="font-hud text-[9px] text-gold bg-purple-950/80 border border-gold/50 px-3 py-1 hover:bg-gold hover:text-black transition-all ml-1">[OPEN]</button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function openDocumentModal(index) {
+      const modal = document.getElementById('vn-modal');
+      const modalTag = document.getElementById('modal-tag');
+      const modalBody = document.getElementById('modal-body');
+      const char = characters[index];
+
+      modalTag.innerText = `DOCUMENT FILE // ID: ${char.id}`;
+
+      let docContentHTML = '';
+      if (char.CV && char.CV.trim() !== "") {
+        docContentHTML = `<img src="${char.CV}" class="w-full h-full object-cover">`;
+      } else {
+        docContentHTML = `
+          <div class="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-gold"></div>
+          <div class="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-gold"></div>
+          <div class="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-gold"></div>
+          <div class="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-gold"></div>
+
+          <svg class="w-16 h-16 text-fuchsia-400/50 mb-2 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+          </svg>
+          <span class="font-hud font-bold text-xs text-gold uppercase tracking-widest text-gold-shadow">A4 DOCUMENT</span>
+          <span class="font-hud text-[9px] text-fuchsia-400 mt-1 uppercase tracking-wider">${char.name}</span>
+        `;
+      }
+
+      modalBody.innerHTML = `
+        <div class="hud-frame holo-scanner a4-container bg-gradient-to-br from-purple-950/70 via-black to-black border-2 border-fuchsia-500 p-3 relative shadow-[0_0_35px_rgba(217,70,239,0.4)] my-2 flex flex-col items-center justify-center">
+          <div class="hud-corner-tl"></div>
+          <div class="hud-corner-br"></div>
+
+          <div class="w-full h-full bg-black/90 border border-fuchsia-500/60 flex flex-col items-center justify-center relative overflow-hidden shadow-[inset_0_0_20px_rgba(217,70,239,0.2)]">
+            ${docContentHTML}
+          </div>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+    }
+
+    function renderGallery() {
+      const container = document.getElementById('gallery-container');
+      container.innerHTML = '';
+      
+      galleryImages.forEach((imgUrl, index) => {
+        const item = document.createElement('div');
+        item.className = 'hud-frame bg-black/80 border border-fuchsia-500 flex flex-col items-center justify-center relative p-2 shadow-[0_0_10px_rgba(217,70,239,0.2)] aspect-square';
+
+        item.innerHTML = `
+          <div class="hud-corner-tl"></div>
+          <div class="hud-corner-br"></div>
+          <div class="w-full h-full bg-black/70 flex flex-col items-center justify-center overflow-hidden relative">
+            ${imgUrl && imgUrl.trim() !== "" ? `<img src="${imgUrl}" class="w-full h-full object-cover">` : `
+              <div class="flex flex-col items-center justify-center text-fuchsia-400/60 p-2 text-center">
+                <svg class="w-8 h-8 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-1.96-2.36L6.5 17h11l-3.54-4.71z"/>
+                </svg>
+                <span class="font-hud font-bold text-[8px] uppercase tracking-wider text-gold">[ Slot ${index + 1} ]</span>
+                <span class="font-hud text-[7px] text-fuchsia-300 mt-0.5">Empty Slot</span>
+              </div>
+            `}
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function initQuiz() {
+      quizQuestions = [];
+      quizScore = 0;
+      currentQuizIndex = 0;
+      isAnswered = false;
+
+      let shuffledChars = [...characters].sort(() => Math.random() - 0.5);
+      
+      shuffledChars.forEach(char => {
+        let randomQuote = char.quotes[Math.floor(Math.random() * char.quotes.length)];
+
+        let otherChars = characters.filter(c => c.name !== char.name);
+        let shuffledOthers = [...otherChars].sort(() => Math.random() - 0.5);
+        let wrongChoices = shuffledOthers.slice(0, 3).map(c => c.name);
+        
+        let options = [char.name, ...wrongChoices].sort(() => Math.random() - 0.5);
+
+        quizQuestions.push({
+          quote: randomQuote,
+          correctAnswer: char.name,
+          options: options
+        });
+      });
+
+      renderQuizQuestion();
+    }
+
+    function renderQuizQuestion() {
+      isAnswered = false;
+      const container = document.getElementById('quiz-container');
+      const counterEl = document.getElementById('quiz-counter');
+
+      if (currentQuizIndex >= quizQuestions.length) {
+        counterEl.innerText = `COMPLETED`;
+        container.innerHTML = `
+          <div class="py-6 flex flex-col items-center justify-center gap-4 w-full">
+            <span class="font-hud text-xs text-fuchsia-400 uppercase tracking-widest">THIS IS HOW MUCH YOU KNOW GROOVY</span>
+            <div class="hud-frame p-6 bg-purple-950/40 border border-gold text-center my-2">
+              <div class="hud-corner-tl"></div>
+              <div class="hud-corner-br"></div>
+              <span class="font-hud text-xs text-slate-300 block mb-1 uppercase">Final Score Matrix</span>
+              <span class="font-hud font-black text-3xl text-gold text-gold-shadow">${quizScore} / 10</span>
+            </div>
+            <button onclick="initQuiz()" class="font-hud font-bold text-xs bg-gold text-black px-6 py-3 uppercase tracking-widest hover:bg-yellow-400 transition-all shadow-[0_0_15px_rgba(250,204,21,0.6)] active:scale-95">
+              Re-initialize Quiz
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      counterEl.innerText = `Question ${currentQuizIndex + 1} / 10`;
+      const q = quizQuestions[currentQuizIndex];
+
+      let optionsHTML = '';
+      q.options.forEach(opt => {
+        optionsHTML += `
+          <button onclick="checkQuizAnswer(this, '${opt.replace(/'/g, "\\'")}', '${q.correctAnswer.replace(/'/g, "\\'")}')" class="quiz-option font-hud text-xs bg-purple-950/50 border border-fuchsia-500/60 hover:border-gold hover:bg-gold hover:text-black text-fuchsia-200 py-3 px-4 uppercase tracking-wider transition-all text-center shadow-[0_0_10px_rgba(217,70,239,0.2)] active:scale-95">
+            ${opt}
+          </button>
+        `;
+      });
+
+      container.innerHTML = `
+        <div class="w-full flex flex-col items-center">
+          <div class="bg-black/90 border border-fuchsia-500/50 p-4 w-full min-h-[90px] flex items-center justify-center text-center mb-6 shadow-[inset_0_0_15px_rgba(217,70,239,0.15)]">
+            <p class="font-hud text-sm md:text-base text-gold leading-relaxed tracking-wider text-gold-shadow">"${q.quote}"</p>
+          </div>
+
+          <span class="font-hud text-[10px] text-fuchsia-400 uppercase tracking-widest mb-3">Identify Character Origin</span>
+          
+          <div id="quiz-options-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mb-4">
+            ${optionsHTML}
+          </div>
+
+          <div id="quiz-next-container" class="h-[45px] flex items-center justify-center w-full">
+            <!-- Next button appears upon answer selection -->
+          </div>
+        </div>
+      `;
+    }
+
+    function checkQuizAnswer(btnElement, selectedOpt, correctOpt) {
+      if (isAnswered) return;
+      isAnswered = true;
+
+      const allButtons = document.querySelectorAll('.quiz-option');
+      allButtons.forEach(btn => {
+        btn.disabled = true;
+        if (btn.innerText.trim().toUpperCase() === correctOpt.toUpperCase()) {
+          btn.className = "quiz-option font-hud text-xs bg-green-950 border border-green-400 text-green-300 py-3 px-4 uppercase tracking-wider transition-all text-center shadow-[0_0_15px_rgba(74,222,128,0.5)]";
+        } else if (btn === btnElement && selectedOpt.toUpperCase() !== correctOpt.toUpperCase()) {
+          btn.className = "quiz-option font-hud text-xs bg-red-950 border border-red-500 text-red-300 py-3 px-4 uppercase tracking-wider transition-all text-center shadow-[0_0_15px_rgba(239,68,68,0.5)]";
+        }
+      });
+
+      if (selectedOpt.toUpperCase() === correctOpt.toUpperCase()) {
+        quizScore++;
+      }
+
+      const nextContainer = document.getElementById('quiz-next-container');
+      nextContainer.innerHTML = `
+        <button onclick="currentQuizIndex++; renderQuizQuestion();" class="font-hud font-bold text-xs bg-gold text-black px-6 py-2.5 uppercase tracking-widest hover:bg-yellow-400 transition-all shadow-[0_0_15px_rgba(250,204,21,0.6)] active:scale-95 animate-bounce">
+          Next Question &#9658;
+        </button>
+      `;
+    }
+
+    function rotateCarousel(direction) {
+      currentIndex = (currentIndex + direction + characters.length) % characters.length;
+      renderCarousel();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        rotateCarousel(-1);
+      } else if (e.key === 'ArrowRight') {
+        rotateCarousel(1);
+      }
+    });
+
+    function handleChoice(choice) {
+      const modal = document.getElementById('vn-modal');
+      const modalTag = document.getElementById('modal-tag');
+      const modalBody = document.getElementById('modal-body');
+      const char = characters[currentIndex];
+      
+      if (choice === 'yes') {
+        modalTag.innerText = "GROOVY ID CARD";
+        
+        modalBody.innerHTML = `
+          <div class="hud-frame holo-scanner w-full max-w-xl mx-auto bg-gradient-to-br from-purple-950/70 via-black to-black border-2 border-gold p-6 relative shadow-[0_0_35px_rgba(250,204,21,0.4)] my-2">
+            <div class="hud-corner-tl"></div>
+            <div class="hud-corner-br"></div>
+
+            <div class="flex items-center justify-between border-b border-fuchsia-500/50 pb-3 mb-4 gap-2 flex-wrap">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 bg-gold animate-ping inline-block rounded-full"></span>
+                <span class="font-hud text-xs text-gold font-bold tracking-widest uppercase">SECURE CITIZEN ID // NEO-METRO</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-hud text-xs text-fuchsia-400 uppercase font-bold">ID:</span>
+                <span class="font-hud text-xs text-fuchsia-300 font-bold bg-black/80 border border-fuchsia-500 px-2 py-0.5 tracking-wider">${char.id}</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-5 items-center mb-4">
+              <div class="sm:col-span-5 flex flex-col items-center">
+                <div class="hud-frame w-full aspect-[3/4] max-w-[150px] sm:max-w-[170px] bg-black/90 border border-fuchsia-500 flex flex-col items-center justify-center relative shadow-[0_0_15px_rgba(217,70,239,0.4)]">
+                  <div class="hud-corner-tl"></div>
+                  <div class="hud-corner-br"></div>
+                  <div class="w-full h-full bg-black/70 flex items-center justify-center overflow-hidden relative">
+                    ${char.profileImage && char.profileImage.trim() !== "" ? `<img src="${char.profileImage}" class="w-full h-full object-cover">` : `
+                      <div class="flex flex-col items-center justify-center text-fuchsia-400/60 p-3 text-center">
+                        <svg class="w-10 h-10 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                        <span class="font-hud font-bold text-[8px] uppercase tracking-wider">ID PHOTO</span>
+                      </div>
+                    `}
+                  </div>
+                </div>
+              </div>
+
+              <div class="sm:col-span-7 flex flex-col gap-3">
+                <div>
+                  <span class="font-hud text-[9px] text-fuchsia-400 uppercase tracking-widest block mb-1">SUBJECT NAME</span>
+                  <div class="bg-black/80 border border-gold text-gold font-hud font-black text-xl sm:text-2xl tracking-wider uppercase px-2 py-1 w-full shadow-[0_0_10px_rgba(250,204,21,0.3)]">
+                    ${char.name}
+                  </div>
+                </div>
+
+                <div class="bg-purple-950/30 border border-fuchsia-500/40 p-2.5 shadow-[inset_0_0_10px_rgba(217,70,239,0.15)]">
+                  <span class="font-hud text-[9px] text-fuchsia-400 uppercase tracking-widest block mb-1">Description</span>
+                  <p class="font-hud text-xs text-slate-200 leading-relaxed">${char.desc}</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="bg-purple-950/20 border border-fuchsia-500/30 p-2">
+                    <span class="font-hud text-[8px] text-fuchsia-400 uppercase tracking-wider block mb-1">Birthdate</span>
+                    <div class="bg-black/80 border border-fuchsia-500/50 text-gold font-hud text-xs px-1.5 py-0.5 w-full">
+                      ${char.birthdate || '---'}
+                    </div>
+                  </div>
+                  <div class="bg-purple-950/20 border border-fuchsia-500/30 p-2">
+                    <span class="font-hud text-[8px] text-fuchsia-400 uppercase tracking-wider block mb-1">Hometown</span>
+                    <div class="bg-black/80 border border-fuchsia-500/50 text-gold font-hud text-xs px-1.5 py-0.5 w-full">
+                      ${char.hometown || '---'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-fuchsia-500/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div class="flex items-center gap-2 w-full sm:w-auto">
+                <a href="${char.socials.instagram || '#'}" target="_blank" class="flex-1 sm:flex-none bg-purple-950/60 border border-fuchsia-500/60 hover:bg-fuchsia-600 text-fuchsia-300 hover:text-white font-hud text-[10px] font-bold py-1.5 px-3 text-center uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-[0_0_10px_rgba(217,70,239,0.3)]">
+                  Insta
+                </a>
+                <a href="${char.socials.github || '#'}" target="_blank" class="flex-1 sm:flex-none bg-purple-950/60 border border-fuchsia-500/60 hover:bg-fuchsia-600 text-fuchsia-300 hover:text-white font-hud text-[10px] font-bold py-1.5 px-3 text-center uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-[0_0_10px_rgba(217,70,239,0.3)]">
+                  GitHub
+                </a>
+                <a href="${char.socials.discord || '#'}" target="_blank" class="flex-1 sm:flex-none bg-purple-950/60 border border-fuchsia-500/60 hover:bg-fuchsia-600 text-fuchsia-300 hover:text-white font-hud text-[10px] font-bold py-1.5 px-3 text-center uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-[0_0_10px_rgba(217,70,239,0.3)]">
+                  Discord
+                </a>
+              </div>
+              <div class="hidden md:flex flex-col items-end opacity-80">
+                <div class="font-hud text-[10px] tracking-[4px] text-gold animate-pulse">||| | |||| || |</div>
+                <span class="font-hud text-[8px] text-fuchsia-400">VERIFIED CODE</span>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        modalTag.innerText = "SYSTEM DIALOGUE";
+        modalBody.innerHTML = `
+          <div class="bg-purple-950/30 border border-fuchsia-500/40 p-4 min-h-[90px] flex items-center mb-6 shadow-[inset_0_0_15px_rgba(217,70,239,0.2)] w-full">
+            <p class="font-hud text-sm md:text-base text-gold leading-relaxed tracking-wider text-gold-shadow">${char.rejectText}</p>
+          </div>
+          <div class="flex justify-end pb-2 w-full">
+            <button onclick="closeModal()" class="font-hud text-xs font-bold bg-gold text-black px-5 py-2.5 hover:bg-yellow-400 transition-all uppercase tracking-widest shadow-[0_0_15px_rgba(250,204,21,0.6)] hover:scale-105 active:scale-95">
+              [ Continue ]
+            </button>
+          </div>
+        `;
+      }
+      
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('vn-modal');
+      modal.classList.add('hidden');
+      renderCarousel();
+      renderDocuments();
+    }
+
+    window.onload = () => {
+      renderCarousel();
+      renderDocuments();
+      renderGallery();
+    };
+  </script>
+</body>
+</html>
